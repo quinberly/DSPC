@@ -12,10 +12,10 @@ void preprocess(cv::Mat& imgOriginal, cv::Mat& imgGrayscale, cv::Mat& imgThresh)
 
     cv::GaussianBlur(imgMaxContrastGrayscale, imgBlurred, GAUSSIAN_SMOOTH_FILTER_SIZE, 0);          // gaussian blur
 
-                                                                                                    // call adaptive threshold to get imgThresh
-    cv::adaptiveThreshold(imgBlurred, imgThresh, 255.0, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, ADAPTIVE_THRESH_BLOCK_SIZE, ADAPTIVE_THRESH_WEIGHT);
+                // call adaptive threshold to get imgThresh
+    cv::adaptiveThreshold(imgBlurred, imgThresh, 255.0, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 19, 9);
 
-} // canny edge detection
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 cv::Mat extractValue(cv::Mat& imgOriginal) {
@@ -47,5 +47,5 @@ cv::Mat maximizeContrast(cv::Mat& imgGrayscale) {
     imgGrayscalePlusTopHat = imgGrayscale + imgTopHat;
     imgGrayscalePlusTopHatMinusBlackHat = imgGrayscalePlusTopHat - imgBlackHat;
 
-    return imgGrayscalePlusTopHatMinusBlackHat;
+    return(imgGrayscalePlusTopHatMinusBlackHat);
 }
