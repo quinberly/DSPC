@@ -15,7 +15,7 @@ void preprocess(cv::Mat& imgOriginal, cv::Mat& imgGrayscale, cv::Mat& imgThresh)
                                                                                                     // call adaptive threshold to get imgThresh
     cv::adaptiveThreshold(imgBlurred, imgThresh, 255.0, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, ADAPTIVE_THRESH_BLOCK_SIZE, ADAPTIVE_THRESH_WEIGHT);
 
-}
+} // canny edge detection
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 cv::Mat extractValue(cv::Mat& imgOriginal) {
