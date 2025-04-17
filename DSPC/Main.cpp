@@ -60,7 +60,7 @@ int main(void) {
 
         cv::imshow("imgOriginalScene", imgOriginalScene);                       // re-show scene image
 
-        cv::imwrite("imgOriginalScene.png", imgOriginalScene);                  // write image out to file
+        cv::imwrite("output/imgOriginalScene.png", imgOriginalScene);   // write image out to file
     }
 
     cv::waitKey(0);                 // hold windows open until user presses a key
