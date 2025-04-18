@@ -49,3 +49,33 @@ cv::Mat maximizeContrast(cv::Mat& imgGrayscale) {
 
     return(imgGrayscalePlusTopHatMinusBlackHat);
 }
+
+#include <iostream>  // Add this include for std::cerr
+#include <opencv2/opencv.hpp>  // OpenCV includes
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Add Canny edge detection and display imgCanny
+void preprocess(cv::Mat& imgOriginal, cv::Mat& imgGrayscale, cv::Mat& imgThresh, cv::Mat& imgCanny) {
+    imgGrayscale = extractValue(imgOriginal);                           // extract value channel only from original image to get imgGrayscale
+
+    cv::Mat imgMaxContrastGrayscale = maximizeContrast(imgGrayscale);       // maximize contrast with top hat and black hat
+
+    cv::Mat imgBlurred;
+    cv::GaussianBlur(imgMaxContrastGrayscale, imgBlurred, GAUSSIAN_SMOOTH_FILTER_SIZE, 0);  // gaussian blur
+
+    // call adaptive threshold to get imgThresh
+    cv::adaptiveThreshold(imgBlurred, imgThresh, 255.0, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 19, 9);
+
+    // Apply Canny edge detection
+    cv::Canny(imgThresh, imgCanny, 100, 200);  // You can adjust these thresholds
+
+    // Check if imgCanny is empty
+    if (imgCanny.empty()) {
+        std::cerr << "Error: imgCanny is empty!" << std::endl;
+        return; // Exit function early if the image is empty
+    }
+
+    // Display the Canny edge-detected image
+    cv::imshow("Canny Edge Detection", imgCanny);
+    cv::waitKey(0);  // Wait for a key press to close the window
+}
