@@ -49,4 +49,3 @@ cv::Mat maximizeContrast(cv::Mat& imgGrayscale) {
 
     return(imgGrayscalePlusTopHatMinusBlackHat);
 }
-
