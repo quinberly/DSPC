@@ -15,52 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DetectPlates.cpp">
+    <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DetectCharscpp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PossibleChar.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PossiblePlate.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Preprocess.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DSPC.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Main.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DetectPlates.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DetectChars.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PossibleChar.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PossiblePlate.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Preprocess.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Xml Include="classifications.xml">
-      <Filter>Source Files</Filter>
-    </Xml>
-    <Xml Include="images.xml">
-      <Filter>Source Files</Filter>
-    </Xml>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">

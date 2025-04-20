@@ -1,110 +1,121 @@
-// Main.cpp
-
-#include "Main.h"
 #include <opencv2/opencv.hpp>
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <filesystem>
 
+using namespace cv;
+using namespace std;
+namespace fs = std::filesystem;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-int main(void) {
+// Sauvola Thresholding Function
+Mat sauvolaThreshold(const Mat& srcGray, int windowSize = 25, double k = 0.5, double R = 128.0)
+{
+    Mat threshImg = Mat::zeros(srcGray.size(), CV_8UC1);
 
-    bool blnKNNTrainingSuccessful = loadKNNDataAndTrainKNN();           // attempt KNN training
+    Mat intImg, sqIntImg;
+    integral(srcGray, intImg, sqIntImg, CV_64F);
 
-    if (blnKNNTrainingSuccessful == false) {                            // if KNN training was not successful
-                                                                        // show error message
-        std::cout << std::endl << std::endl << "error: error: KNN traning was not successful" << std::endl << std::endl;
-        return(0);                                                      // and exit program
+    int halfWin = windowSize / 2;
+    for (int y = halfWin; y < srcGray.rows - halfWin; ++y)
+    {
+        for (int x = halfWin; x < srcGray.cols - halfWin; ++x)
+        {
+            int x0 = x - halfWin;
+            int y0 = y - halfWin;
+            int x1 = x + halfWin;
+            int y1 = y + halfWin;
+
+            int area = (x1 - x0 + 1) * (y1 - y0 + 1);
+
+            double sum = intImg.at<double>(y1 + 1, x1 + 1) - intImg.at<double>(y1 + 1, x0) - intImg.at<double>(y0, x1 + 1) + intImg.at<double>(y0, x0);
+            double sqSum = sqIntImg.at<double>(y1 + 1, x1 + 1) - sqIntImg.at<double>(y1 + 1, x0) - sqIntImg.at<double>(y0, x1 + 1) + sqIntImg.at<double>(y0, x0);
+
+            double m = sum / area;
+            double s = sqrt((sqSum - (sum * sum) / area) / area);
+
+            double T = m * (1 + k * ((s / R) - 1));
+            threshImg.at<uchar>(y, x) = (srcGray.at<uchar>(y, x) > T) ? 255 : 0;
+        }
     }
 
-    cv::Mat imgOriginalScene;           // input image
+    return threshImg;
+}
 
-    imgOriginalScene = cv::imread("image1.png");         // open image
+int main()
+{
+    string folderPath = "C:/Users/User/Desktop/DSPC/DSPC/images";
+    string outputFolder = "C:/Users/User/Desktop/DSPC/DSPC/output";
+    fs::create_directories(outputFolder);
 
-    if (imgOriginalScene.empty()) {                             // if unable to open image
-        std::cout << "error: image not read from file\n\n";     // show error message on command line
-        _getch();                                               // may have to modify this line if not using Windows
-        return(0);                                              // and exit program
-    }
+    for (const auto& entry : fs::directory_iterator(folderPath))
+    {
+        string imagePath = entry.path().string();
+        Mat image = imread(imagePath);
 
-    std::vector<PossiblePlate> vectorOfPossiblePlates = detectPlatesInScene(imgOriginalScene);          // detect plates
-
-    vectorOfPossiblePlates = detectCharsInPlates(vectorOfPossiblePlates);                               // detect chars in plates
-
-    cv::imshow("imgOriginalScene", imgOriginalScene);           // show scene image
-
-    if (vectorOfPossiblePlates.empty()) {                                               // if no plates were found
-        std::cout << std::endl << "no license plates were detected" << std::endl;       // inform user no plates were found
-    }
-    else {                                                                            // else
-                                                                                      // if we get in here vector of possible plates has at leat one plate
-
-                                                                                      // sort the vector of possible plates in DESCENDING order (most number of chars to least number of chars)
-        std::sort(vectorOfPossiblePlates.begin(), vectorOfPossiblePlates.end(), PossiblePlate::sortDescendingByNumberOfChars);
-
-        // suppose the plate with the most recognized chars (the first plate in sorted by string length descending order) is the actual plate
-        PossiblePlate licPlate = vectorOfPossiblePlates.front();
-
-        cv::imshow("imgPlate", licPlate.imgPlate);            // show crop of plate and threshold of plate
-        cv::imshow("imgThresh", licPlate.imgThresh);
-
-        if (licPlate.strChars.length() == 0) {                                                      // if no chars were found in the plate
-            std::cout << std::endl << "no characters were detected" << std::endl << std::endl;      // show message
-            return(0);                                                                              // and exit program
+        if (image.empty())
+        {
+            cerr << "Failed to load image: " << imagePath << endl;
+            continue;
         }
 
-        drawRedRectangleAroundPlate(imgOriginalScene, licPlate);                // draw red rectangle around plate
+        // Convert to grayscale and filter
+        Mat gray, filtered;
+        cvtColor(image, gray, COLOR_BGR2GRAY);
+        bilateralFilter(gray, filtered, 9, 75, 75); // Fine-tune or remove this
+        medianBlur(filtered, filtered, 5);  // Fine-tune or remove this
 
-        std::cout << std::endl << "license plate read from image = " << licPlate.strChars << std::endl;     // write license plate text to std out
-        std::cout << std::endl << "-----------------------------------------" << std::endl;
+        // Edge detection with adjusted thresholds
+        Mat edges;
+        Canny(filtered, edges, 50, 200); // Adjust thresholds for better edge detection
 
-        writeLicensePlateCharsOnImage(imgOriginalScene, licPlate);              // write license plate text on the image
+        // Find contours with more checks
+        vector<vector<Point>> contours;
+        findContours(edges, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-        cv::imshow("imgOriginalScene", imgOriginalScene);                       // re-show scene image
+        vector<Point> plateContour;
+        for (const auto& contour : contours)
+        {
+            double peri = arcLength(contour, true);
+            vector<Point> approx;
+            approxPolyDP(contour, approx, 0.02 * peri, true); // Adjust approximation accuracy
+            if (approx.size() == 4)
+            {
+                // Check aspect ratio of the bounding rectangle
+                Rect plateRect = boundingRect(approx);
+                double aspectRatio = (double)plateRect.width / plateRect.height;
+                if (aspectRatio > 2 && aspectRatio < 5)  // Adjust aspect ratio thresholds
+                {
+                    plateContour = approx;
+                    break;
+                }
+            }
+        }
 
-        cv::imwrite("output/imgOriginalScene.png", imgOriginalScene);   // write image out to file
+        if (!plateContour.empty())
+        {
+            Rect plateRect = boundingRect(plateContour);
+            Mat plate = image(plateRect).clone();
+
+            // Convert plate to grayscale and apply Sauvola thresholding
+            Mat plateGray;
+            cvtColor(plate, plateGray, COLOR_BGR2GRAY);
+            Mat plateSauvola = sauvolaThreshold(plateGray);
+
+            // Save cropped and processed plate
+            string fileName = fs::path(imagePath).filename().string();
+            string outPath = outputFolder + "/sauvola_" + fileName;
+            imwrite(outPath, plateSauvola);
+
+            // Display result
+            imshow("Detected Plate (Sauvola)", plateSauvola);
+            waitKey(0);
+        }
+        else
+        {
+            cout << "No license plate detected in: " << imagePath << endl;
+        }
     }
 
-    cv::waitKey(0);                 // hold windows open until user presses a key
-
-    return(0);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void drawRedRectangleAroundPlate(cv::Mat& imgOriginalScene, PossiblePlate& licPlate) {
-    cv::Point2f p2fRectPoints[4];
-
-    licPlate.rrLocationOfPlateInScene.points(p2fRectPoints);            // get 4 vertices of rotated rect
-
-    for (int i = 0; i < 4; i++) {                                       // draw 4 red lines
-        cv::line(imgOriginalScene, p2fRectPoints[i], p2fRectPoints[(i + 1) % 4], SCALAR_RED, 2);
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void writeLicensePlateCharsOnImage(cv::Mat& imgOriginalScene, PossiblePlate& licPlate) {
-    cv::Point ptCenterOfTextArea;                   // this will be the center of the area the text will be written to
-    cv::Point ptLowerLeftTextOrigin;                // this will be the bottom left of the area that the text will be written to
-
-    int intFontFace = cv::FONT_HERSHEY_SIMPLEX;
-    double dblFontScale = (double)licPlate.imgPlate.rows / 30.0;            // base font scale on height of plate area
-    int intFontThickness = (int)std::round(dblFontScale * 1.5);             // base font thickness on font scale
-    int intBaseline = 0;
-
-    cv::Size textSize = cv::getTextSize(licPlate.strChars, intFontFace, dblFontScale, intFontThickness, &intBaseline);      // call getTextSize
-
-    ptCenterOfTextArea.x = (int)licPlate.rrLocationOfPlateInScene.center.x;         // the horizontal location of the text area is the same as the plate
-
-    if (licPlate.rrLocationOfPlateInScene.center.y < (imgOriginalScene.rows * 0.75)) {      // if the license plate is in the upper 3/4 of the image
-                                                                                            // write the chars in below the plate
-        ptCenterOfTextArea.y = (int)std::round(licPlate.rrLocationOfPlateInScene.center.y) + (int)std::round((double)licPlate.imgPlate.rows * 1.6);
-    }
-    else {                                                                                // else if the license plate is in the lower 1/4 of the image
-                                                                                          // write the chars in above the plate
-        ptCenterOfTextArea.y = (int)std::round(licPlate.rrLocationOfPlateInScene.center.y) - (int)std::round((double)licPlate.imgPlate.rows * 1.6);
-    }
-
-    ptLowerLeftTextOrigin.x = (int)(ptCenterOfTextArea.x - (textSize.width / 2));           // calculate the lower left origin of the text area
-    ptLowerLeftTextOrigin.y = (int)(ptCenterOfTextArea.y + (textSize.height / 2));          // based on the text area center, width, and height
-
-                                                                                            // write the text on the image
-    cv::putText(imgOriginalScene, licPlate.strChars, ptLowerLeftTextOrigin, intFontFace, dblFontScale, SCALAR_YELLOW, intFontThickness);
-}
+    return 0;
+}  
